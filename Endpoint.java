@@ -38,7 +38,7 @@ public class Endpoint extends Node {
                     validInput = true;
                     endpoint = new Endpoint(HOST_PORTS[0], NEXT_FW_NODES[0], NEXT_FW_PORTS[0], ENDPOINT_NODES[1],
                             HOST_PORTS[1]);
-                    endpoint.startEP1(scanner);
+                    endpoint.startEP1();
                 } else if (numberEP == 2) {
                     validInput = true;
                     endpoint = new Endpoint(HOST_PORTS[1], NEXT_FW_NODES[1], NEXT_FW_PORTS[1], ENDPOINT_NODES[0],
@@ -52,11 +52,13 @@ public class Endpoint extends Node {
         scanner.close();
     }
 
-    public synchronized void startEP1(Scanner scanner) throws Exception {
+    public synchronized void startEP1() throws Exception {
+        Scanner scanner = new Scanner(System.in);
         System.out.println("Message to be sent:");
         String message = scanner.nextLine();
         sendMessage(message);
         System.out.println("Message sent.");
+        scanner.close();
     }
 
     public synchronized void startEP2() throws Exception {
@@ -64,28 +66,34 @@ public class Endpoint extends Node {
         this.wait();
     }
 
-    public void sendMessage(String message) throws IOException {
-        byte[] tmp = Base64.getDecoder().decode(message);
-        byte[] data = new byte[126 + tmp.length];
-        System.arraycopy(tmp, 0, data, 126, tmp.length);
+    public void sendMessage(String message) {
+        try {
+            byte[] tmp = message.getBytes();
+            byte[] data = new byte[126 + tmp.length];
+            System.arraycopy(tmp, 0, data, 126, tmp.length);
 
-        tmp = ByteBuffer.allocate(4).putInt(dstNode.getPort()).array();
-        System.arraycopy(tmp, 0, data, 84, tmp.length);
+            tmp = ByteBuffer.allocate(4).putInt(dstNode.getPort()).array();
+            System.arraycopy(tmp, 0, data, 84, tmp.length);
 
-        tmp = ByteBuffer.allocate(4).putInt(socket.getPort()).array();
-        System.arraycopy(tmp, 0, data, 42, tmp.length);
+            tmp = ByteBuffer.allocate(4).putInt(socket.getPort()).array();
+            System.arraycopy(tmp, 0, data, 42, tmp.length);
 
-        DatagramPacket packet = new DatagramPacket(data, data.length);
-        packet.setSocketAddress(nextFW);
-        socket.send(packet);
+            DatagramPacket packet = new DatagramPacket(data, data.length);
+            packet.setSocketAddress(nextFW);
+            socket.send(packet);
+        } catch (Exception e) {
+            System.out.println("Failed to send the packet");
+            e.printStackTrace();
+        }
     }
 
     public synchronized void onReceipt(DatagramPacket packet) {
         byte[] data = packet.getData();
-        byte[] tmp = new byte[PACKETSIZE];
+        byte[] tmp = new byte[data.length - 126];
         System.arraycopy(data, 126, tmp, 0, data.length - 126);
-        String message = Base64.getEncoder().encodeToString(tmp);
+        String message = new String(tmp);
         System.out.println("Message from *ide majd visszakódolom a Port számot* : \n" + message);
+        this.notify();
     }
 
 }
