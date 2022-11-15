@@ -14,6 +14,17 @@ public class Endpoint extends Node {
     InetSocketAddress nextFW;
     InetSocketAddress dstNode;
 
+    Endpoint(int hostPort, String connectedNode, int connectedPort, String dstNode, int dstPort) {
+        try {
+            nextFW = new InetSocketAddress(connectedNode, connectedPort);
+            this.dstNode = new InetSocketAddress(dstNode, dstPort);
+            socket = new DatagramSocket(hostPort);
+            listener.go();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         boolean validInput = false;
@@ -39,17 +50,6 @@ public class Endpoint extends Node {
             }
         }
         scanner.close();
-    }
-
-    Endpoint(int hostPort, String connectedNode, int connectedPort, String dstNode, int dstPort) {
-        try {
-            nextFW = new InetSocketAddress(connectedNode, connectedPort);
-            this.dstNode = new InetSocketAddress(dstNode, dstPort);
-            socket = new DatagramSocket(hostPort);
-            listener.go();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public synchronized void startEP1(Scanner scanner) throws Exception {
@@ -80,7 +80,7 @@ public class Endpoint extends Node {
         socket.send(packet);
     }
 
-    public void onReceipt(DatagramPacket packet) {
+    public synchronized void onReceipt(DatagramPacket packet) {
         byte[] data = packet.getData();
         byte[] tmp = new byte[PACKETSIZE];
         System.arraycopy(data, 126, tmp, 0, data.length - 126);
