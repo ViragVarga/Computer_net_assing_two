@@ -33,8 +33,8 @@ public class Endpoint extends Node {
         boolean validInput = false;
         Endpoint endpoint = null;
         while (!validInput) {
-            System.out.println("Initialize the endpoint (1 or 2):"); // Differentiating the two endpoints depending on
-                                                                     // the number given
+            System.out.println("Initialize the endpoint (1 or 2):");  // Differentiating the two endpoints depending on
+                                                                        // the number given
             int numberEP = 0;
             try {
                 numberEP = scanner.nextInt();
@@ -74,18 +74,18 @@ public class Endpoint extends Node {
     public void sendMessage(String message) {
         try {
             byte[] tmp = message.getBytes(); // Turning message into a byte array
-            byte[] data = new byte[126 + tmp.length]; // Creating byte array that's going to be sent containing all the
-                                                      // data
-            System.arraycopy(tmp, 0, data, 126, tmp.length); // Placing the message(bytes) into the sending byte array
-                                                             // from byte 126
+            byte[] data = new byte[126 + tmp.length];    // Creating byte array that's going to be sent containing all the
+                                                         // data
+            System.arraycopy(tmp, 0, data, 126, tmp.length);        // Placing the message(bytes) into the sending byte array
+                                                                                    // from byte 126
 
-            tmp = ByteBuffer.allocate(4).putInt(dstNode.getPort()).array(); // Placing the destination port into the
-                                                                            // sending byte array from byte 84
+            tmp = ByteBuffer.allocate(4).putInt(dstNode.getPort()).array();     // Placing the destination port into the
+                                                                                         // sending byte array from byte 84
             System.arraycopy(tmp, 0, data, 84, tmp.length);
 
             tmp = ByteBuffer.allocate(4).putInt(socket.getPort()).array(); // Placing the source destination (local)
-                                                                           // port into the sending byte array from byte
-                                                                           // 42
+                                                                                    // port into the sending byte array from byte
+                                                                                    // 42
             System.arraycopy(tmp, 0, data, 42, tmp.length);
 
             DatagramPacket packet = new DatagramPacket(data, data.length); // Sending packet to the connected forwarder
