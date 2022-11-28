@@ -6,12 +6,12 @@ import java.util.concurrent.CountDownLatch;
 
 public abstract class Node {
 	static final int PACKETSIZE = 65536;
+	static final int CONTROLLER_INFORMATION = 10;
+	static final int MESSAGE = 100;
 
-	DatagramSocket socket;
+	static DatagramSocket socket;
 	Listener listener;
 	CountDownLatch latch;
-	private String[][] conTable;
-	private int[][] conPorts;
 
 	Node() {
 		latch = new CountDownLatch(1);
@@ -20,37 +20,30 @@ public abstract class Node {
 		listener.start();
 	}
 
-	public int send(byte[] array, InetSocketAddress destination, DatagramSocket host) {
-		try {
-			DatagramPacket packet = new DatagramPacket(array, array.length);
-			packet.setSocketAddress(destination);
-			host.send(packet);
-		} catch (Exception e) {
-			return -1;
-		}
-		return 0;
-	}
-
-	public int send(String message, InetSocketAddress destination, DatagramSocket host) {
-		message = host.getPort() + "|" + destination.getPort() + "|" + message;
+	public static byte[] setMessage(String message, InetSocketAddress destination, DatagramSocket host, int mType) {
+		message = mType + "|" + host.getPort() + "|" + destination.getPort() + "|" + message;
 		byte[] data = message.getBytes();
-		int success = send(data, destination, host);
-		return success;
+		return data;
 	}
 
-	public int getHost(String message) {
+	public int getType(String message) {
 		String[] data = message.split("|");
 		return Integer.parseInt(data[0]);
 	}
 
-	public int getDes(String message) {
+	public int getHost(String message) {
 		String[] data = message.split("|");
 		return Integer.parseInt(data[1]);
 	}
 
+	public int getDes(String message) {
+		String[] data = message.split("|");
+		return Integer.parseInt(data[2]);
+	}
+
 	public String getMessage(String message) {
 		String[] data = message.split("|");
-		return data[2];
+		return data[3];
 	}
 
 	public abstract void onReceipt(DatagramPacket packet);

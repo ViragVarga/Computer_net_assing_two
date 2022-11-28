@@ -1,8 +1,6 @@
-import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.util.Scanner;
 
 public class Endpoint extends Node {
@@ -44,15 +42,20 @@ public class Endpoint extends Node {
                     validInput = true;
                     endpoint = new Endpoint(HOST_PORTS[0], NEXT_FW_NODES[0], NEXT_FW_PORTS[0], ENDPOINT_NODES[1],
                             HOST_PORTS[1]);
-                    endpoint.startEP1();
+                    while (true) {
+                        endpoint.startEP1();
+                    }
                 } else if (numberEP == 2) {
                     validInput = true;
                     endpoint = new Endpoint(HOST_PORTS[1], NEXT_FW_NODES[1], NEXT_FW_PORTS[1], ENDPOINT_NODES[0],
                             HOST_PORTS[0]);
-                    endpoint.startEP2();
+                    while (true) {
+                        endpoint.startEP2();
+                    }
                 }
             } catch (Exception e) {
                 System.out.println("Invalid entry.");
+                e.printStackTrace();
             }
         }
         scanner.close();
@@ -63,7 +66,6 @@ public class Endpoint extends Node {
         System.out.println("Message to be sent:");
         String message = scanner.nextLine();
         sendMessage(message);
-        System.out.println("Message sent.");
         scanner.close();
     }
 
@@ -73,27 +75,14 @@ public class Endpoint extends Node {
     }
 
     public void sendMessage(String message) {
+        byte[] data = setMessage(message, dstNode, socket, Node.MESSAGE);
         try {
-            byte[] tmp = message.getBytes(); // Turning message into a byte array
-            byte[] data = new byte[126 + tmp.length]; // Creating byte array that's going to be sent containing all the
-                                                      // data
-            System.arraycopy(tmp, 0, data, 126, tmp.length); // Placing the message(bytes) into the sending byte array
-                                                             // from byte 126
-
-            tmp = ByteBuffer.allocate(4).putInt(dstNode.getPort()).array(); // Placing the destination port into the
-                                                                            // sending byte array from byte 84
-            System.arraycopy(tmp, 0, data, 84, tmp.length);
-
-            tmp = ByteBuffer.allocate(4).putInt(socket.getPort()).array(); // Placing the source destination (local)
-                                                                           // port into the sending byte array from byte
-                                                                           // 42
-            System.arraycopy(tmp, 0, data, 42, tmp.length);
-
-            DatagramPacket packet = new DatagramPacket(data, data.length); // Sending packet to the connected forwarder
+            DatagramPacket packet = new DatagramPacket(data, data.length);
             packet.setSocketAddress(nextFW);
             socket.send(packet);
+            System.out.println("Message sent.");
         } catch (Exception e) {
-            System.out.println("Failed to send the packet");
+            System.out.println("Message failed to send");
             e.printStackTrace();
         }
     }
@@ -101,11 +90,20 @@ public class Endpoint extends Node {
     public synchronized void onReceipt(DatagramPacket packet) {
         byte[] data = packet.getData(); // On recieving the packet it extracts the message from the byte
                                         // array and displays it
-        byte[] tmp = new byte[data.length - 126];
-        System.arraycopy(data, 126, tmp, 0, data.length - 126);
-        String message = new String(tmp);
-        System.out.println("Message recieved: \n" + message);
+        String message = new String(data);
+        if (getType(message) == Node.MESSAGE) {
+            /*
+             * if (getType(message) == Node.CONTROLLER_INFORMATION) {
+             * String[] s = getMessage(message).split(" ");
+             * String nName = s[0];
+             * int nPort = Integer.parseInt(s[1]);
+             * nextFW = new InetSocketAddress(nName, nPort);
+             * } else {
+             */
+            System.out.println("Message recieved: \n" + getMessage(message));
+        }
         this.notify();
+        // }
     }
 
 }
