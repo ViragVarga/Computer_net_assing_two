@@ -15,6 +15,8 @@ public class Endpoint extends Node {
     InetSocketAddress nextFW;
     InetSocketAddress dstNode;
 
+    Scanner scanner = new Scanner(System.in);
+
     // Contractor for the class
     Endpoint(int hostPort, String connectedNode, int connectedPort, String dstNode, int dstPort) {
         try {
@@ -62,11 +64,9 @@ public class Endpoint extends Node {
     }
 
     public synchronized void startEP1() throws Exception {
-        Scanner scanner = new Scanner(System.in);
         System.out.println("Message to be sent:");
         String message = scanner.nextLine();
         sendMessage(message);
-        scanner.close();
     }
 
     public synchronized void startEP2() throws Exception {
