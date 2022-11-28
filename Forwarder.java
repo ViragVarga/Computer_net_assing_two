@@ -1,7 +1,6 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Forwarder extends Node {
@@ -9,19 +8,19 @@ public class Forwarder extends Node {
     // Setting the endpoints' and forwarders' name and port number
     static final int[] FW_PORTS = { 50001, 50002, 50003 };
     static final String[] FW_NODES = { "forwarder1", "forwarder2", "forwarder3" };
-    static final int CONTROLLER_PORT = 60000;
-    static final String CONTROLLER_NAME = "controller";
-    static ArrayList<ArrayList<String>> conNames;
-    static ArrayList<ArrayList<Integer>> conPorts;
+    static final int[] ENDPOINT_PORTS = { 50000, 50004 };
+    static final String[] ENDPOINT_NODE = { "endpoint1", "endpoint2" };
 
     // Creating an array for the two connections each forwarder has
-    InetSocketAddress nextAddress;
-    InetSocketAddress controller = new InetSocketAddress(CONTROLLER_NAME, CONTROLLER_PORT);
+    InetSocketAddress[] connectedNodes = new InetSocketAddress[2];
 
     // Contractor for the class
-    Forwarder(int localPort) {
+    Forwarder(int localPort, String firstConnectedNode, int firstConnectedPort, String secondConnectedNode,
+            int secondConnectedPort) {
         try {
             socket = new DatagramSocket(localPort);
+            connectedNodes[0] = new InetSocketAddress(firstConnectedNode, firstConnectedPort);
+            connectedNodes[1] = new InetSocketAddress(secondConnectedNode, secondConnectedPort);
             listener.go();
         } catch (Exception e) {
             e.printStackTrace();
@@ -40,22 +39,22 @@ public class Forwarder extends Node {
                 numberFW = scanner.nextInt();
                 if (numberFW == 1) {
                     validInput = true;
-                    forwarder = new Forwarder(FW_PORTS[0]);
+                    forwarder = new Forwarder(FW_PORTS[0], ENDPOINT_NODE[0], ENDPOINT_PORTS[0], FW_NODES[1],
+                            FW_PORTS[1]);
                 } else if (numberFW == 2) {
                     validInput = true;
-                    forwarder = new Forwarder(FW_PORTS[1]);
+                    forwarder = new Forwarder(FW_PORTS[1], FW_NODES[0], FW_PORTS[0], FW_NODES[2], FW_PORTS[2]);
                 } else if (numberFW == 3) {
                     validInput = true;
-                    forwarder = new Forwarder(FW_PORTS[2]);
+                    forwarder = new Forwarder(FW_PORTS[2], FW_NODES[1], FW_PORTS[1], ENDPOINT_NODE[1],
+                            ENDPOINT_PORTS[1]);
                 }
             } catch (Exception e) {
                 System.out.println("Invalid entry");
             }
         }
         scanner.close();
-        while (true) {
-            forwarder.start();
-        }
+        forwarder.start();
     }
 
     public synchronized void start() throws Exception {
@@ -64,63 +63,25 @@ public class Forwarder extends Node {
     }
 
     public synchronized void onReceipt(DatagramPacket packet) {
-        String data = new String(packet.getData());
-        if (getType(data) == Node.MESSAGE) {
-            System.out.println("Packet recieved.");
-            try {
-                nextAddress = getNextPort(socket, getDes(data));
-                if (nextAddress != null) {
-                    packet.setSocketAddress(nextAddress);
-                    socket.send(packet);
-                    System.out.println("Packet sent.");
-                } else {
-                    byte[] query = setMessage(Integer.toString(getDes(data)), controller, socket,
-                            CONTROLLER_INFORMATION);
-                    DatagramPacket info = new DatagramPacket(query, query.length);
-                    info.setSocketAddress(controller);
-                    socket.send(info);
-                    socket.receive(packet);
-                }
+        System.out.println("Packet recieved.");
+        int port = packet.getPort(); // taking the port number it was sent from and forwarding it to the other
+                                     // connection the forwarder has
+        try {
+            if (port == connectedNodes[0].getPort()) {
+                packet.setSocketAddress(connectedNodes[1]);
+                socket.send(packet);
+                System.out.println("Packet sent.");
+            } else if (port == connectedNodes[1].getPort()) {
+                packet.setSocketAddress(connectedNodes[0]);
+                socket.send(packet);
+                System.out.println("Packet sent.");
+            } else {
+                System.out.println("Packet is sent from an unidentified port!");
+            }
 
-            } catch (Exception e) {
-                System.out.println("Failed to forward the packet");
-            }
-        }
-
-        if (getType(data) == Node.CONTROLLER_INFORMATION) {
-            String s = getMessage(data);
-            String[] separateNamesPorts = s.split(":");
-            String[] rowNames = separateNamesPorts[0].split(";");
-            for (int i = 0; i < rowNames.length; i++) {
-                for (String string : rowNames[i].split(" ")) {
-                    conNames.get(i).add(string);
-                }
-            }
-            String[] rowPorts = separateNamesPorts[1].split(";");
-            for (int i = 0; i < rowPorts.length; i++) {
-                for (String string : rowPorts[i].split(" ")) {
-                    conPorts.get(i).add(Integer.parseInt(string));
-                }
-            }
-            System.out.println("Table updated!");
+        } catch (Exception e) {
+            System.out.println("Failed to forward the packet");
         }
         this.notify();
-    }
-
-    private InetSocketAddress getNextPort(DatagramSocket socket, int des) {
-        for (int i = 0; i < conPorts.size(); i++) {
-            for (int j = 1; j < conPorts.get(i).size(); j++) {
-                if (conPorts.get(i).get(j) == des) {
-                    if (conPorts.get(i).get(0) == socket.getPort()) {
-                        return new InetSocketAddress(conPorts.get(i).get(j));
-                    } else {
-                        des = conPorts.get(i).get(0);
-                        i = 0;
-                        j = 0;
-                    }
-                }
-            }
-        }
-        return null;
     }
 }
