@@ -21,28 +21,28 @@ public abstract class Node {
 	}
 
 	public static byte[] setMessage(String message, InetSocketAddress destination, DatagramSocket host, int mType) {
-		message = mType + "|" + host.getPort() + "|" + destination.getPort() + "|" + message;
+		message = mType + "@" + host.getLocalPort() + "@" + destination.getPort() + "@" + message;
 		byte[] data = message.getBytes();
 		return data;
 	}
 
 	public int getType(String message) {
-		String[] data = message.split("|");
+		String[] data = message.split("@", 4);
 		return Integer.parseInt(data[0]);
 	}
 
 	public int getHost(String message) {
-		String[] data = message.split("|");
+		String[] data = message.split("@", 4);
 		return Integer.parseInt(data[1]);
 	}
 
 	public int getDes(String message) {
-		String[] data = message.split("|");
+		String[] data = message.split("@", 4);
 		return Integer.parseInt(data[2]);
 	}
 
 	public String getMessage(String message) {
-		String[] data = message.split("|");
+		String[] data = message.split("@", 4);
 		return data[3];
 	}
 
