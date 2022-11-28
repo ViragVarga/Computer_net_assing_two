@@ -16,11 +16,11 @@ public class Controller extends Node {
      * { "forwarder3", "forwarder2", "endpoint2" },
      * { "endpoint2", "forwarder3", null } };
      */
-    static ArrayList<ArrayList<String>> conNode;
+    static ArrayList<ArrayList<String>> conNode = new ArrayList<ArrayList<String>>();
 
-    static ArrayList<ArrayList<Integer>> conPorts;
+    static ArrayList<ArrayList<Integer>> conPorts = new ArrayList<ArrayList<Integer>>();
 
-    static ArrayList<InetSocketAddress> connections;
+    static ArrayList<InetSocketAddress> connections = new ArrayList<InetSocketAddress>();
     /*
      * private int[][] conPorts; = { { 50000, 50001, 0 },
      * { 50001, 20000, 50002 },
@@ -43,31 +43,47 @@ public class Controller extends Node {
         Scanner sc = new Scanner(System.in);
         System.out.println("Please enter the number of containers:");
         int number = sc.nextInt();
-        conNode = new ArrayList<ArrayList<String>>();
-        conPorts = new ArrayList<ArrayList<Integer>>();
-        boolean done = false;
-        // for (int i = 0; i < number; i++)
-        while (!done) {
+        /*
+         * for (int i = 0; i < number; i++) {
+         * conNode.add(new ArrayList<String>());
+         * conPorts.add(new ArrayList<Integer>());
+         * }
+         */
+        // boolean done = false;
+        for (numNodes = 0; numNodes < number; numNodes++) {
             System.out.println(
-                    "Enter the container name and port number separated by space.\nOr the word exit to finish.");
-            String tmp = sc.next();
-            if (tmp.toLowerCase().equals("exit")) {
-                done = true;
-            } else {
-                conNode.get(numNodes).add(tmp);
-                conPorts.get(numNodes).add(sc.nextInt());
-                numNodes++;
-            }
+                    "Enter the container name and port number separated by space.");
+            conNode.add(new ArrayList<String>());
+            conNode.get(numNodes).add(sc.next());
+            conPorts.add(new ArrayList<Integer>());
+            conPorts.get(numNodes).add(sc.nextInt());
         }
+        /*
+         * while (!done) {
+         * System.out.println(
+         * "Enter the container name and port number separated by space.\nOr the word exit to finish."
+         * );
+         * String tmp = sc.next();
+         * if (tmp.toLowerCase().equals("exit")) {
+         * done = true;
+         * } else {
+         * conNode.get(numNodes).add(tmp);
+         * conPorts.get(numNodes).add(sc.nextInt());
+         * numNodes++;
+         * }
+         * }
+         */
 
         try {
             for (int i = 0; i < numNodes; i++) {
                 connections.add(new InetSocketAddress(conNode.get(i).get(0), conPorts.get(i).get(0)));
                 System.out.println("Please enter the name(s) of containers (separated by space) connected to "
                         + conNode.get(i).get(0));
-                String[] tmp = sc.nextLine().split(" ");
+                String connect = sc.nextLine();
+                String[] tmp = connect.split(" ");
+                String s = "";
                 for (int j = 0; i < tmp.length; i++) {
-                    String s = tmp[j];
+                    s = tmp[j];
                     conNode.get(i).add(s);
                     int counter = 0;
                     while (counter < numNodes && s != conNode.get(counter).get(0)) {
@@ -81,11 +97,10 @@ public class Controller extends Node {
                     }
 
                     s += " " + conPorts.get(i).get(j);
-                    byte[] data = setMessage(s, connections.get(i), socket, Node.CONTROLLER_INFORMATION);
-                    DatagramPacket packet = new DatagramPacket(data, data.length);
-                    packet.setSocketAddress(connections.get(i));
-                    socket.send(packet);
                 }
+                DatagramPacket packet = new DatagramPacket(s.getBytes(), s.getBytes().length);
+                packet.setSocketAddress(connections.get(i));
+                socket.send(packet);
             }
             Controller controller = new Controller(hostPort);
             System.out.println("Connection table set up, ready to go!");
