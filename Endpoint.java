@@ -8,7 +8,7 @@ public class Endpoint extends Node {
     // Setting the endpoints' and forwarders' name and port number
     static final int[] HOST_PORTS = { 50000, 50004 };
     static final String[] ENDPOINT_NODES = { "endpoint1", "endpoint2" };
-    static final int[] NEXT_FW_PORTS = { 50001, 50003 };
+    static final int NEXT_FW_PORTS = 54321;
     static final String[] NEXT_FW_NODES = { "forwarder1", "forwarder3" };
 
     // Creating a variable for the connected forwarder and the other endpoint
@@ -16,13 +16,15 @@ public class Endpoint extends Node {
     InetSocketAddress dstNode;
 
     Scanner scanner = new Scanner(System.in);
+    String hostName;
 
     // Contractor for the class
-    Endpoint(int hostPort, String connectedNode, int connectedPort, String dstNode, int dstPort) {
+    Endpoint(int hostPort, String hostName, String connectedNode, int connectedPort, String dstNode, int dstPort) {
         try {
             nextFW = new InetSocketAddress(connectedNode, connectedPort);
             this.dstNode = new InetSocketAddress(dstNode, dstPort);
             socket = new DatagramSocket(hostPort);
+            this.hostName = hostName;
             listener.go();
         } catch (Exception e) {
             e.printStackTrace();
@@ -42,14 +44,16 @@ public class Endpoint extends Node {
                 if (numberEP == 1) { // Initializing the host endpoint with connected forwarder and the other
                                      // endpoint
                     validInput = true;
-                    endpoint = new Endpoint(HOST_PORTS[0], NEXT_FW_NODES[0], NEXT_FW_PORTS[0], ENDPOINT_NODES[1],
+                    endpoint = new Endpoint(HOST_PORTS[0], ENDPOINT_NODES[0], NEXT_FW_NODES[0], NEXT_FW_PORTS,
+                            ENDPOINT_NODES[1],
                             HOST_PORTS[1]);
                     while (true) {
                         endpoint.startEP1();
                     }
                 } else if (numberEP == 2) {
                     validInput = true;
-                    endpoint = new Endpoint(HOST_PORTS[1], NEXT_FW_NODES[1], NEXT_FW_PORTS[1], ENDPOINT_NODES[0],
+                    endpoint = new Endpoint(HOST_PORTS[1], ENDPOINT_NODES[1], NEXT_FW_NODES[1], NEXT_FW_PORTS,
+                            ENDPOINT_NODES[0],
                             HOST_PORTS[0]);
                     while (true) {
                         endpoint.startEP2();
@@ -75,7 +79,7 @@ public class Endpoint extends Node {
     }
 
     public void sendMessage(String message) {
-        byte[] data = setMessage(message, dstNode, socket, Node.MESSAGE);
+        byte[] data = setMessage(message, dstNode, hostName, Node.MESSAGE);
         try {
             DatagramPacket packet = new DatagramPacket(data, data.length);
             packet.setSocketAddress(nextFW);
