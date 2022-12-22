@@ -8,6 +8,7 @@ public abstract class Node {
 	static final int PACKETSIZE = 65536;
 	static final int CONTROLLER_INFORMATION = 10;
 	static final int MESSAGE = 100;
+	static final int ACK = 11;
 
 	static DatagramSocket socket;
 	Listener listener;
@@ -20,10 +21,14 @@ public abstract class Node {
 		listener.start();
 	}
 
-	public static byte[] setMessage(String message, InetSocketAddress destination, DatagramSocket host, int mType) {
-		message = mType + "@" + host.getLocalPort() + "@" + destination.getPort() + "@" + message;
+	public static byte[] setMessage(String message, String destination, String host, int mType) {
+		message = mType + "@" + host + "@" + destination + "@" + message;
 		byte[] data = message.getBytes();
 		return data;
+	}
+
+	public static byte[] setMessage(String message, InetSocketAddress destination, String host, int mType) {
+		return setMessage(message, destination.getHostName(), host, mType);
 	}
 
 	public int getType(String message) {
@@ -31,14 +36,14 @@ public abstract class Node {
 		return Integer.parseInt(data[0]);
 	}
 
-	public int getHost(String message) {
+	public String getHost(String message) {
 		String[] data = message.split("@", 4);
-		return Integer.parseInt(data[1]);
+		return data[1];
 	}
 
-	public int getDes(String message) {
+	public String getDes(String message) {
 		String[] data = message.split("@", 4);
-		return Integer.parseInt(data[2]);
+		return data[2];
 	}
 
 	public String getMessage(String message) {
