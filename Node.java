@@ -8,6 +8,7 @@ public abstract class Node {
 	static final int PACKETSIZE = 65536;
 	static final int CONTROLLER_INFORMATION = 10;
 	static final int MESSAGE = 100;
+	static final int ACK = 11;
 
 	static DatagramSocket socket;
 	Listener listener;
