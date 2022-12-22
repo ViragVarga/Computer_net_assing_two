@@ -84,7 +84,7 @@ public class Forwarder extends Node {
     public synchronized void onReceipt(DatagramPacket packet) {
         String data = new String(packet.getData());
 
-        if (getType(data) == Node.MESSAGE) {
+        if (getType(data) == Node.CONNECTION || getType(data) == Node.MESSAGE) {
             try {
                 System.out.println("Packet recieved.");
                 nextAddress = getNextPort(socket, getDes(data));
@@ -149,16 +149,26 @@ public class Forwarder extends Node {
 
     private InetSocketAddress getNextPort(DatagramSocket socket, String des) {
         if (conNames != null) {
+            boolean checked[] = new boolean[conNames.size()];
+            ArrayList<String> donePath = new ArrayList<String>();
+            donePath.add(des);
             for (int i = 0; i < conNames.size(); i++) {
                 for (int j = 1; j < conNames.get(i).size(); j++) {
-                    if (conNames.get(i).get(j).contains(des)) {
-                        if (conNames.get(i).get(0).contains(localName)) {
-                            return new InetSocketAddress(conNames.get(i).get(j), conPorts.get(i).get(j));
-                        } else {
-                            des = conNames.get(i).get(0);
-                            i = 0;
-                            j = 0;
+                    if (!checked[i]) {
+                        if (conNames.get(i).get(j).contains(des)) {
+                            if (conNames.get(i).get(0).contains(localName)) {
+                                return new InetSocketAddress(conNames.get(i).get(j), conPorts.get(i).get(j));
+                            } else if (!donePath.contains(conNames.get(i).get(0))) {
+                                checked[i] = true;
+                                des = conNames.get(i).get(0);
+                                donePath.add(conNames.get(i).get(0));
+                                i = 0;
+                                j = 0;
+                            }
                         }
+                    } else {
+                        i++;
+                        j = 0;
                     }
                 }
             }

@@ -164,19 +164,20 @@ public class Controller extends Node {
 
     private boolean path(String des, String host) {
         boolean[] checked = new boolean[numNodes];
+        ArrayList<String> donePath = new ArrayList<String>();
+        donePath.add(des);
         for (int i = 0; i < numNodes; i++) {
             for (int j = 1; j < conPorts[i].length; j++) {
                 if (!checked[i]) {
-                    if (conNames[i][j] != null) {
-                        if (conNames[i][j].contains(des)) {
-                            if (conNames[i][0].contains(host)) {
-                                return true;
-                            } else {
-                                checked[i] = true;
-                                des = conNames[i][0];
-                                i = 0;
-                                j = 0;
-                            }
+                    if (conNames[i][j] != null && conNames[i][j].contains(des)) {
+                        if (conNames[i][0].contains(host)) {
+                            return true;
+                        } else if (!donePath.contains(conNames[i][0])) {
+                            checked[i] = true;
+                            des = conNames[i][0];
+                            donePath.add(des);
+                            i = 0;
+                            j = 0;
                         }
                     }
                 } else {
