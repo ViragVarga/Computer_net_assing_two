@@ -84,7 +84,7 @@ public class Forwarder extends Node {
     public synchronized void onReceipt(DatagramPacket packet) {
         String data = new String(packet.getData());
 
-        if (getType(data) == Node.CONNECTION || getType(data) == Node.MESSAGE) {
+        if (getType(data) == Node.MESSAGE) {
             try {
                 System.out.println("Packet recieved.");
                 nextAddress = getNextPort(socket, getDes(data));

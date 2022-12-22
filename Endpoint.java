@@ -14,11 +14,12 @@ public class Endpoint extends Node {
     static final String[] NEXT_FW_NODES = { "forwarder1", "forwarder3" };
 
     // Creating a variable for the connected forwarder and the other endpoint
-    InetSocketAddress nextFW;
+    static InetSocketAddress nextFW;
     InetSocketAddress dstNode;
 
     Scanner scanner = new Scanner(System.in);
     String hostName;
+    boolean sent = false;
 
     // Contractor for the class
     Endpoint(int hostPort, String hostName, String connectedNode, int connectedPort, String dstNode, int dstPort) {
@@ -59,7 +60,7 @@ public class Endpoint extends Node {
                         System.out.println("Invalid entry.");
                         break;
                 }
-                Thread listenThread = new Thread(new ListenThread(socket));
+                Thread listenThread = new Thread(new ListenThread(socket, nextFW));
                 listenThread.start();
                 while (true) {
                     endpoint.startEP();
@@ -72,26 +73,25 @@ public class Endpoint extends Node {
         scanner.close();
     }
 
-    public synchronized void startEP() throws Exception {
+    public void startEP() throws Exception {
         System.out.println("Message to be sent:");
         String message = scanner.nextLine();
         sendMessage(message);
     }
 
-    public void sendMessage(String message) {
+    public synchronized void sendMessage(String message) {
         byte[] data = setMessage(message, dstNode, hostName, Node.MESSAGE);
-        byte[] setConnec = setMessage("Connection request", dstNode, hostName, Node.CONNECTION);
 
         try {
-            DatagramPacket packet = new DatagramPacket(setConnec, setConnec.length);
-            packet.setSocketAddress(nextFW);
-            socket.send(packet);
 
-            this.wait(1000);
+            while (!sent) {
 
-            packet = new DatagramPacket(data, data.length);
-            packet.setSocketAddress(nextFW);
-            socket.send(packet);
+                DatagramPacket packet = new DatagramPacket(data, data.length);
+                packet.setSocketAddress(nextFW);
+                socket.send(packet);
+
+                this.wait(3000);
+            }
 
             System.out.println("Message sent.");
 
@@ -102,6 +102,11 @@ public class Endpoint extends Node {
     }
 
     public synchronized void onReceipt(DatagramPacket packet) {
+        String message = new String(packet.getData());
+        System.out.println("Packet recieved");
+        if (getType(message) == Node.ACK) {
+            sent = true;
+        }
         /*
          * System.out.println("Checkpoint 4");
          * byte[] data = packet.getData(); // On recieving the packet it extracts the
@@ -130,28 +135,21 @@ public class Endpoint extends Node {
 class ListenThread extends Node implements Runnable {
 
     private DatagramSocket socket;
+    private InetSocketAddress next;
 
-    ListenThread(DatagramSocket socket) {
+    ListenThread(DatagramSocket socket, InetSocketAddress next) {
         this.socket = socket;
+        this.next = next;
     }
 
-    /*
-     * public synchronized void run(Endpoint endpoint) {
-     * point = endpoint;
-     * this.run();
-     * }
-     */
-
-    public synchronized void run() {
-        while (true) {
-            try {
-                byte[] data = new byte[PACKETSIZE];
-                DatagramPacket packet = new DatagramPacket(data, data.length);
-                socket.receive(packet);
-                onReceipt(packet);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    public void run() {
+        try {
+            byte[] data = new byte[PACKETSIZE];
+            DatagramPacket packet = new DatagramPacket(data, data.length);
+            socket.receive(packet);
+            onReceipt(packet);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -169,6 +167,20 @@ class ListenThread extends Node implements Runnable {
              * } else {
              */
             System.out.println("Message recieved: \n" + getMessage(message));
+
+            synchronized (this) {
+                for (int i = 0; i < 2; i++) {
+                    try {
+                        byte[] ack = setMessage("ACK", getHost(message), getDes(message), Node.ACK);
+                        packet = new DatagramPacket(ack, ack.length);
+                        packet.setSocketAddress(next);
+                        socket.send(packet);
+                        // System.out.println("ACK sent");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
         // }
     }
