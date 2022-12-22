@@ -8,7 +8,7 @@ public class Forwarder extends Node {
 
     // Setting the endpoints' and forwarders' name and port number
     static final int FW_PORTS = 54321;
-    static final String[] FW_NODES = { "forwarder1", "forwarder2", "forwarder3" };
+    static final String[] FW_NODES = { "forwarder1", "forwarder2", "forwarder3", "forwarder4", "forwarder5" };
     static final int CONTROLLER_PORT = 60000;
     static final String CONTROLLER_NAME = "controller";
     static ArrayList<ArrayList<String>> conNames = new ArrayList<ArrayList<String>>();
@@ -20,6 +20,7 @@ public class Forwarder extends Node {
 
     DatagramPacket packetOnHold = null;
     String localName;
+    ArrayList<String> localCon = new ArrayList<String>();
 
     // Contractor for the class
     Forwarder(int localPort, String name) {
@@ -37,35 +38,19 @@ public class Forwarder extends Node {
         boolean validInput = false;
         Forwarder forwarder = null;
         while (!validInput) {
-            System.out.println("Initialize the forwarder (1, 2 or 3):"); // Differentiating the forwarder (with its
-                                                                         // connections) by user input number
+            System.out.println("Initialize the forwarder (1, 2, 3, 4 or 5):"); // Differentiating the forwarder (with
+                                                                               // its
+            // connections) by user input number
             int numberFW = 0;
             try {
                 numberFW = scanner.nextInt();
-                switch (numberFW) {
-                    case 1:
-                        validInput = true;
-                        forwarder = new Forwarder(FW_PORTS, FW_NODES[0]);
-                        break;
-                    case 2:
-                        validInput = true;
-                        forwarder = new Forwarder(FW_PORTS, FW_NODES[1]);
-                        break;
-                    case 3:
-                        validInput = true;
-                        forwarder = new Forwarder(FW_PORTS, FW_NODES[2]);
-                        break;
-                    default:
-                        forwarder = null;
-                        System.out.println("Invalid entry");
-                        break;
+                if (numberFW > 0 && numberFW < 6) {
+                    validInput = true;
+                    numberFW--;
+                    forwarder = new Forwarder(FW_PORTS, FW_NODES[numberFW]);
+                } else {
+                    System.out.println("Invalid entry");
                 }
-                /*
-                 * if (numberFW == 1) {
-                 * } else if (numberFW == 2) {
-                 * } else if (numberFW == 3) {
-                 * }
-                 */
             } catch (Exception e) {
                 System.out.println("Invalid entry");
             }
@@ -84,11 +69,12 @@ public class Forwarder extends Node {
     public synchronized void onReceipt(DatagramPacket packet) {
         String data = new String(packet.getData());
 
-        if (getType(data) == Node.MESSAGE) {
+        if (getType(data) == Node.ACK || getType(data) == Node.MESSAGE) {
             try {
                 System.out.println("Packet recieved.");
-                nextAddress = getNextPort(socket, getDes(data));
+                nextAddress = getNextPort(getDes(data));
                 if (nextAddress != null) {
+                    System.out.println(nextAddress.getHostName());
                     packet.setSocketAddress(nextAddress);
                     socket.send(packet);
                     System.out.println("Packet sent.");
@@ -107,15 +93,16 @@ public class Forwarder extends Node {
         }
 
         if (getType(data) == Node.CONTROLLER_INFORMATION) {
-            System.out.println("Table info recieved.");
             String s = getMessage(data);
             String[] separateNamesPorts = s.split(":");
             String[] rowNames = separateNamesPorts[0].split(";");
             for (int i = 0; i < rowNames.length; i++) {
-                // rowNames[i] = rowNames[i].substring(0, rowNames[i].length() - 2);
                 conNames.add(new ArrayList<String>());
                 for (String string : rowNames[i].split(" ")) {
                     conNames.get(i).add(string);
+                    if (conNames.get(i).get(0).contains(localName) && string != null) {
+                        localCon.add(string);
+                    }
                 }
             }
             String[] rowPorts = separateNamesPorts[1].split(";");
@@ -133,7 +120,7 @@ public class Forwarder extends Node {
 
         if (packetOnHold != null) {
             data = new String(packetOnHold.getData());
-            nextAddress = getNextPort(socket, getDes(data));
+            nextAddress = getNextPort(getDes(data));
             if (nextAddress != null) {
                 try {
                     packetOnHold.setSocketAddress(nextAddress);
@@ -147,28 +134,35 @@ public class Forwarder extends Node {
         this.notify();
     }
 
-    private InetSocketAddress getNextPort(DatagramSocket socket, String des) {
+    private InetSocketAddress getNextPort(String des) {
+
         if (conNames != null) {
-            boolean checked[] = new boolean[conNames.size()];
-            ArrayList<String> donePath = new ArrayList<String>();
-            donePath.add(des);
+            for (int i = 0; i < conNames.size(); i++) {
+                if (conNames.get(i).get(0).equals(localName)) {
+                    for (int j = 1; j < conNames.get(i).size(); j++) {
+                        if (conNames.get(i).get(j).equals(des)) {
+                            return new InetSocketAddress(conNames.get(i).get(j), conPorts.get(i).get(j));
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < conNames.size(); i++) {
+                if (conNames.get(i).contains(localName)) {
+                    for (int j = 1; j < conNames.get(i).size(); j++) {
+                        if (conNames.get(i).get(j).equals(des)) {
+                            return new InetSocketAddress(conNames.get(i).get(0), conPorts.get(i).get(0));
+                        }
+                    }
+                }
+            }
             for (int i = 0; i < conNames.size(); i++) {
                 for (int j = 1; j < conNames.get(i).size(); j++) {
-                    if (!checked[i]) {
-                        if (conNames.get(i).get(j).contains(des)) {
-                            if (conNames.get(i).get(0).contains(localName)) {
-                                return new InetSocketAddress(conNames.get(i).get(j), conPorts.get(i).get(j));
-                            } else if (!donePath.contains(conNames.get(i).get(0))) {
-                                checked[i] = true;
-                                des = conNames.get(i).get(0);
-                                donePath.add(conNames.get(i).get(0));
-                                i = 0;
-                                j = 0;
+                    if (conNames.get(i).get(j).equals(des)) {
+                        for (int tmp = 0; tmp < conNames.get(i).size(); tmp++) {
+                            if (localCon.contains(conNames.get(i).get(tmp))) {
+                                return new InetSocketAddress(conNames.get(i).get(tmp), conPorts.get(i).get(tmp));
                             }
                         }
-                    } else {
-                        i++;
-                        j = 0;
                     }
                 }
             }
